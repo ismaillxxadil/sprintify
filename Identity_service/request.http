@@ -1,0 +1,52 @@
+@baseUrl = http://localhost:8080
+@email = user@example.com
+@password = StrongPass123
+
+### Signup - create a new user
+POST {{baseUrl}}/api/v1/auth/signup
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### Login - authenticate existing user
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+### Login Admin - authenticate admin user 
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "admin@sprintify.com",
+  "password": "admin123"
+}
+
+
+############################################################
+### ADMIN OPERATIONS (Requires Admin Token)
+############################################################
+
+### 1. Fetch All Users - Dashboard List
+# Copy the token from Admin Login response and paste it below
+GET {{baseUrl}}/api/v1/admin/users
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbkBzcHJpbnRpZnkuY29tIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzc2MzI1Njg2LCJleHAiOjE3NzY0MTIwODZ9.krqPxxWLwCcjkX0TLs2tfmYedGmXtsjeC6Bqa2IKN6o
+
+###
+
+### 2. Delete User - Remove by UUID
+# Replace 'USER_ID' with a real numeric ID from the list above
+DELETE {{baseUrl}}/api/v1/admin/users/2
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyQGV4YW1wbGUuY29tIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3NzYzMzA0NjgsImV4cCI6MTc3NjQxNjg2OH0.jv2UwuWLx_6HG3fGQEZUjo0lCSJboXyXaktAo-Ys6fo
+
+###
+
+### 3. Get My Profile - Requires Any Valid JWT
+GET {{baseUrl}}/api/v1/users/profile
+Authorization: Bearer eyJhbfGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyQGV4YW1wbGUuY29tIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3NzYzMjc1MzUsImV4cCI6MTc3NjQxMzkzNX0.L6BNqW_uQuXi_kRgWmTOQ0ctYxD-M8CGVArlYv6t1ZI
