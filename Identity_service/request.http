@@ -1,5 +1,5 @@
-@baseUrl = http://localhost:8080
-@email = user@example.com
+@baseUrl = http://localhost:8081
+@email = user2@example.com
 @password = StrongPass123
 
 ### Signup - create a new user
@@ -36,16 +36,24 @@ Content-Type: application/json
 ### 1. Fetch All Users - Dashboard List
 # Copy the token from Admin Login response and paste it below
 GET {{baseUrl}}/api/v1/admin/users
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbkBzcHJpbnRpZnkuY29tIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzc2MzI1Njg2LCJleHAiOjE3NzY0MTIwODZ9.krqPxxWLwCcjkX0TLs2tfmYedGmXtsjeC6Bqa2IKN6o
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbkBzcHJpbnRpZnkuY29tIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzc2NDQyNDM3LCJleHAiOjE3NzY1Mjg4Mzd9.pOqxSolU6XoVHpEM3pZnPFWfAACtpuk2X44AvkbNt_0
 
 ###
 
 ### 2. Delete User - Remove by UUID
 # Replace 'USER_ID' with a real numeric ID from the list above
 DELETE {{baseUrl}}/api/v1/admin/users/2
-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1c2VyQGV4YW1wbGUuY29tIiwicm9sZSI6IlVTRVIiLCJpYXQiOjE3NzYzMzA0NjgsImV4cCI6MTc3NjQxNjg2OH0.jv2UwuWLx_6HG3fGQEZUjo0lCSJboXyXaktAo-Ys6fo
+Authorization: BearereyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbkBzcHJpbnRpZnkuY29tIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzc2NDQxNzYwLCJleHAiOjE3NzY1MjgxNjB9.Bbia2RSzOTFFZWs2w36xktLPQhT1MyUT1PZ-G5vZAlY
 
-###
+## 3. Ban User - Mark user as banned (soft delete)
+# Replace 'USER_ID' with a real numeric ID from the list above
+POST {{baseUrl}}/api/v1/admin/users/2/ban
+Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbkBzcHJpbnRpZnkuY29tIiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzc2NDQxNzYwLCJleHAiOjE3NzY1MjgxNjB9.Bbia2RSzOTFFZWs2w36xktLPQhT1MyUT1PZ-G5vZAlY
+Content-Type: application/json
+
+{
+  "days": 30
+}
 
 ### 3. Get My Profile - Requires Any Valid JWT
 GET {{baseUrl}}/api/v1/users/profile
