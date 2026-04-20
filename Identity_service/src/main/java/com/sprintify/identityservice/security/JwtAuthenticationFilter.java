@@ -2,6 +2,7 @@ package com.sprintify.identityservice.security;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -44,17 +45,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = authorizationHeader.substring(7);
 
         try {
+            UUID userId = jwtService.extractUserId(token);
             String email = jwtService.extractEmail(token);
+            String role = jwtService.extractRole(token);
 
-            if (email == null || !jwtService.isTokenValid(token, email)) {
+            if (email == null || role == null || !jwtService.isTokenValid(token, userId)) {
                 response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired token");
                 return;
             }
 
             //if the user is not authenticated yet, we will authenticate them based on the token
             if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                User user = userRepository.findByEmail(email)
-                        .filter(foundUser -> foundUser.getRole() != null)
+                User user = userRepository.findById(userId)
+                    .filter(foundUser -> foundUser.getRole() != null)
+                    .filter(foundUser -> foundUser.getEmail().equals(email))
+                    .filter(foundUser -> foundUser.getRole().name().equals(role))
                         .orElse(null);
 
                 if (user == null) {
@@ -68,9 +73,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     return;
                 }
 
-                // create an authentication token with the user's email and role, and set it in the security context
+                // create an authentication token with the user's id, email and role, and set it in the security context
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
-                        user.getEmail(),
+                    user.getId().toString(),
                         null,// no credentials since we're using JWT
                         List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
                 );

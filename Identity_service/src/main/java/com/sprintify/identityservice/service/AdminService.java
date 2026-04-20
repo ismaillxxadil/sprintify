@@ -2,6 +2,7 @@ package com.sprintify.identityservice.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -26,7 +27,7 @@ public class AdminService {
                 .toList();
     }
 
-    public void deleteUser(Long id) {
+    public void deleteUser(UUID id) {
         if (!userRepository.existsById(id)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with ID: " + id);
         }
@@ -34,7 +35,7 @@ public class AdminService {
         userRepository.deleteById(id);
     }
 
-    public void banUser(Long id, Integer days) {
+    public void banUser(UUID id, Integer days) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found with ID: " + id));
 

@@ -1,6 +1,7 @@
 package com.sprintify.identityservice.entity; 
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -17,8 +18,8 @@ import jakarta.persistence.Table;
 public class User {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY) // بيعد 1, 2, 3 أوتوماتيك
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @Column(unique = true, nullable = false)
     private String email;
@@ -41,10 +42,10 @@ public class User {
         this.createdAt = LocalDateTime.now();
     }
 
-    // --- Getters and Setters (Updated to Long) ---
+    // --- Getters and Setters ---
     
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }

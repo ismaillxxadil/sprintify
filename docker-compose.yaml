@@ -1,0 +1,100 @@
+services:
+  # ==========================================
+  # 1. DATABASES
+  # ==========================================
+  identity-db:
+    image: postgres:16
+    container_name: identity_microservice_db
+    environment:
+      POSTGRES_USER: identity_service
+      POSTGRES_PASSWORD: ${IDENTITY_DB_PASSWORD:-123456}
+      POSTGRES_DB: identity_service_db
+    ports:
+      - "5332:5432"
+    volumes:
+      - identity_postgres_data:/var/lib/postgresql/data
+    networks:
+      - sprintify_network
+
+  project-db:
+    image: postgres:16
+    container_name: project_microservice_db
+    environment:
+      POSTGRES_USER: user_service
+      POSTGRES_PASSWORD: ${PROJECT_DB_PASSWORD:-123456}
+      POSTGRES_DB: project_service_db
+    ports:
+      - "5333:5432"
+    volumes:
+      - project_postgres_data:/var/lib/postgresql/data
+    networks:
+      - sprintify_network
+
+  # ==========================================
+  # 2. SPRING CLOUD INFRASTRUCTURE
+  # ==========================================
+  eureka-server:
+    build: ./service-registry # Path to your Eureka project folder
+    container_name: sprintify_eureka_server
+    ports:
+      - "8761:8761"
+    networks:
+      - sprintify_network
+
+  api-gateway:
+    build: ./api-gateway # Path to your Gateway project folder
+    container_name: sprintify_api_gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      - eureka-server
+    networks:
+      - sprintify_network
+
+  # ==========================================
+  # 3. MICROSERVICES
+  # ==========================================
+  identity-service:
+    build: ./identity_service # Matches the folder name from your screenshot
+    container_name: sprintify_identity_service
+    ports:
+      - "8081:8081"
+    environment:
+      # Use the container name 'identity-db' instead of 'localhost'
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://identity-db:5432/identity_service_db
+      - SPRING_DATASOURCE_USERNAME=identity_service
+      - SPRING_DATASOURCE_PASSWORD=${IDENTITY_DB_PASSWORD:-123456}
+      # Point to the Eureka container name
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      - identity-db
+      - eureka-server
+    networks:
+      - sprintify_network
+
+  project-service:
+    build: ./project-service
+    container_name: sprintify_project_service
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://project-db:5432/project_service_db
+      - SPRING_DATASOURCE_USERNAME=project_service
+      - SPRING_DATASOURCE_PASSWORD=${PROJECT_DB_PASSWORD:-123456}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      - project-db
+      - eureka-server
+    networks:
+      - sprintify_network
+
+# ==========================================
+# CUSTOM NETWORKS & VOLUMES
+# ==========================================
+networks:
+  sprintify_network:
+    driver: bridge
+
+volumes:
+  identity_postgres_data:
+  project_postgres_data:

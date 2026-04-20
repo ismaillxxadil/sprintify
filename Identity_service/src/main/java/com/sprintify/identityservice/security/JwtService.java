@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 
 @Service
 public class JwtService {
@@ -21,7 +22,7 @@ public class JwtService {
     private final long expirationMillis;
 
     public JwtService(
-            @Value("${security.jwt.secret:change-this-secret-key-to-a-very-long-value-at-least-32-bytes}") String secret,
+            @Value("${security.jwt.secret}") String secret,
             @Value("${security.jwt.expiration-ms:86400000}") long expirationMillis
     ) {
         if (secret == null || secret.length() < MIN_SECRET_LENGTH) {
@@ -32,16 +33,13 @@ public class JwtService {
         this.expirationMillis = expirationMillis;
     }
 
-    public String generateToken(String email) {
-        return generateToken(email, Role.USER);
-    }
-
-    public String generateToken(String email, Role role) {
+    public String generateToken(UUID userId, String email, Role role) {
         Date issuedAt = new Date();
         Date expiryAt = new Date(issuedAt.getTime() + expirationMillis);
 
         return Jwts.builder()
-                .setSubject(email)
+                .setSubject(userId.toString())
+                .claim("email", email)
                 .claim("role", role.name())
                 .setIssuedAt(issuedAt)
                 .setExpiration(expiryAt)
@@ -49,13 +47,19 @@ public class JwtService {
                 .compact();
     }
 
-    public boolean isTokenValid(String token, String email) {
-        String tokenEmail = extractEmail(token);
-        return email.equals(tokenEmail) && !isTokenExpired(token);
+    public boolean isTokenValid(String token, UUID userId) {
+        UUID tokenUserId = extractUserId(token);
+        return userId.equals(tokenUserId) && !isTokenExpired(token);
+    }
+
+    public UUID extractUserId(String token) {
+        String subject = extractAllClaims(token).getSubject();
+        return UUID.fromString(subject);
     }
 
     public String extractEmail(String token) {
-        return extractAllClaims(token).getSubject();
+        Object emailClaim = extractAllClaims(token).get("email");
+        return emailClaim != null ? emailClaim.toString() : null;
     }
 
     public String extractRole(String token) {
