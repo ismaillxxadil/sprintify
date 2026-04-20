@@ -1,0 +1,122 @@
+@gateway = http://localhost:8080
+@identityServicePath = /identity-service
+@projectServicePath = /project-service
+@poEmail = po-ismail@example.com
+@poPassword = Pass@12345
+@inviteeEmail = dev1@example.com
+@inviteePassword = Pass@12345
+@projectName = Invite Flow Project
+@projectDescription = Project used to test invite flow
+
+### 1) Signup PO (run once; may return 400 if already exists)
+POST {{gateway}}{{identityServicePath}}/api/v1/auth/signup
+Content-Type: application/json
+
+{
+  "email": "{{poEmail}}",
+  "password": "{{poPassword}}"
+}
+
+### 2) Signup Invitee (run once; may return 400 if already exists)
+POST {{gateway}}{{identityServicePath}}/api/v1/auth/signup
+Content-Type: application/json
+
+{
+  "email": "{{inviteeEmail}}",
+  "password": "{{inviteePassword}}"
+}
+
+### 3) Login PO and capture JWT
+# @name poLogin
+POST {{gateway}}{{identityServicePath}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{poEmail}}",
+  "password": "{{poPassword}}"
+}
+
+### 4) Login Invitee and capture JWT
+# @name inviteeLogin
+POST {{gateway}}{{identityServicePath}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{inviteeEmail}}",
+  "password": "{{inviteePassword}}"
+}
+
+### 5) Create project as PO (PO becomes ACTIVE member)
+# @name createProject
+POST {{gateway}}{{projectServicePath}}/api/v1/projects/create
+Authorization: Bearer {{poLogin.response.body.token}}
+Content-Type: application/json
+
+{
+  "name": "{{projectName}}",
+  "description": "{{projectDescription}}",
+  "state": "ACTIVE"
+}
+
+### 6) PO invites user to project as DEV (status starts as PENDING)
+POST {{gateway}}{{projectServicePath}}/api/v1/projects/{{createProject.response.body.id}}/invites
+Authorization: Bearer {{poLogin.response.body.token}}
+Content-Type: application/json
+
+{
+  "email": "{{inviteeEmail}}",
+  "role": "DEV"
+}
+
+### 7) Invitee lists my pending invites
+# @name myInvites
+GET {{gateway}}{{projectServicePath}}/api/v1/projects/invites/me
+Authorization: Bearer {{inviteeLogin.response.body.token}}
+
+### 8) Invitee responds ACCEPT
+PUT {{gateway}}{{projectServicePath}}/api/v1/projects/{{createProject.response.body.id}}/invites/respond
+Authorization: Bearer {{inviteeLogin.response.body.token}}
+Content-Type: application/json
+
+{
+  "decision": "ACCEPT"
+}
+
+### 9) Optional: Create another project to test REJECT path
+# @name createProjectReject
+POST {{gateway}}{{projectServicePath}}/api/v1/projects/create
+Authorization: Bearer {{poLogin.response.body.token}}
+Content-Type: application/json
+
+{
+  "name": "{{projectName}} REJECT",
+  "description": "Project used to test reject response",
+  "state": "ACTIVE"
+}
+
+### 10) Optional: PO invites same user to second project
+POST {{gateway}}{{projectServicePath}}/api/v1/projects/{{createProjectReject.response.body.id}}/invites
+Authorization: Bearer {{poLogin.response.body.token}}
+Content-Type: application/json
+
+{
+  "email": "{{inviteeEmail}}",
+  "role": "SM"
+}
+
+### 11) Optional: Invitee responds REJECT on second project
+PUT {{gateway}}{{projectServicePath}}/api/v1/projects/{{createProjectReject.response.body.id}}/invites/respond
+Authorization: Bearer {{inviteeLogin.response.body.token}}
+Content-Type: application/json
+
+{
+  "decision": "REJECT"
+}
+
+### 12) Cleanup: Delete first project as PO
+DELETE {{gateway}}{{projectServicePath}}/api/v1/projects/{{createProject.response.body.id}}
+Authorization: Bearer {{poLogin.response.body.token}}
+
+### 13) Cleanup: Delete second project as PO
+DELETE {{gateway}}{{projectServicePath}}/api/v1/projects/{{createProjectReject.response.body.id}}
+Authorization: Bearer {{poLogin.response.body.token}}

@@ -1,6 +1,7 @@
 package com.sprintify.identityservice.controller;
 
 import java.util.List;
+import java.util.UUID;
 
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -38,7 +39,7 @@ public class AdminController {
      * Delete a user by their unique UUID
      */
     @DeleteMapping("/users/{id}")
-    public ResponseEntity<String> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<String> deleteUser(@PathVariable UUID id) {
         adminService.deleteUser(id);
         return ResponseEntity.ok("Success: User has been deleted permanently.");
     }
@@ -47,7 +48,7 @@ public class AdminController {
      * Ban a user for a specified number of days
      */
     @PostMapping("/users/{id}/ban")
-    public ResponseEntity<String> banUser(@PathVariable Long id, @Valid @RequestBody BanRequestDTO request) {
+    public ResponseEntity<String> banUser(@PathVariable UUID id, @Valid @RequestBody BanRequestDTO request) {
         adminService.banUser(id, request.days());
         return ResponseEntity.ok("Success: User has been banned for " + request.days() + " day(s).");
     }

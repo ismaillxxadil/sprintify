@@ -42,7 +42,7 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(request.password()));
 
         User savedUser = userRepository.save(user);
-        String token = jwtService.generateToken(savedUser.getEmail(), savedUser.getRole());
+        String token = jwtService.generateToken(savedUser.getId(), savedUser.getEmail(), savedUser.getRole());
 
         return new AuthResponseDTO(token, savedUser.getEmail(), savedUser.getRole());
     }
@@ -51,13 +51,13 @@ public class AuthService {
         String normalizedEmail = normalizeEmail(request.email());
 
         User user = userRepository.findByEmail(normalizedEmail)
-                .orElseThrow(this::invalidCredentials);
+            .orElseThrow(() -> invalidCredentials());
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw invalidCredentials();
         }
 
-        String token = jwtService.generateToken(user.getEmail(), user.getRole());
+        String token = jwtService.generateToken(user.getId(), user.getEmail(), user.getRole());
         return new AuthResponseDTO(token, user.getEmail(), user.getRole());
     }
 
