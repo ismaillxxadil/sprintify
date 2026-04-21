@@ -3,7 +3,7 @@
     {
       "name": "security.jwt.secret",
       "type": "java.lang.String",
-      "description": "The secret key used for signing JWT tokens. It should be a long and random string to ensure the security of the tokens. This value can be set through environment variables (JWY-SECRET or JWT_SECRET) or directly in the application properties."
+      "description": "The secret key used for signing JWT tokens. It should be a long and random string to ensure the security of the tokens. This value can be set through the JWT_SECRET environment variable or directly in the application properties."
     }
   ]
 }
