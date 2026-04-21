@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "API Gateway",
+      "request": "launch",
+      "mainClass": "com.sprintify.api.gateway.ApiGatewayApplication",
+      "cwd": "${workspaceFolder}/api-gateway",
+      "envFile": "${workspaceFolder}/api-gateway/src/.env"
+    },
+    {
+      "type": "java",
+      "name": "Identity Service",
+      "request": "launch",
+      "mainClass": "com.sprintify.identityservice.SprintifyApplication",
+      "cwd": "${workspaceFolder}/Identity_service",
+      "envFile": "${workspaceFolder}/Identity_service/src/.env"
+    }
+  ]
+}
