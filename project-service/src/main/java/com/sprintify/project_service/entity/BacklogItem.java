@@ -2,6 +2,9 @@ package com.sprintify.project_service.entity;
 
 import com.sprintify.project_service.entity.enums.BacklogItemStatus;
 import com.sprintify.project_service.entity.enums.BacklogItemType;
+import com.sprintify.project_service.entity.enums.Difficulty;
+import com.sprintify.project_service.entity.enums.Priority;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -14,9 +17,11 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -82,6 +87,10 @@ public class BacklogItem {
     @Column(name = "estimated_points")
     private Integer estimatedPoints;
 
+    @Positive
+    @Column(name = "estimated_hours" , nullable = true)
+    private Integer estimatedHours;
+
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -89,6 +98,29 @@ public class BacklogItem {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "created_by_id")
+    private UUID createdById;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
+    @Column(name = "reporter_id")
+    private UUID reporterId;
+
+    @Enumerated(EnumType.STRING)
+    //add default value for difficulty
+    @Builder.Default
+    private Difficulty difficulty = Difficulty.MEDIUM;
+
+    @Column(name = "backlog_order", nullable = false)
+    private Integer backlogOrder;
+
+    @Builder.Default
+    private Priority priority = Priority.MEDIUM;
 
     @Builder.Default
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -99,6 +131,17 @@ public class BacklogItem {
     public void prePersist() {
         if (createdAt == null) {
             createdAt = LocalDateTime.now();
+        }
+        if (updatedAt == null) {
+            updatedAt = LocalDateTime.now();
+        }
+    }
+
+    @PreUpdate
+    public void preUpdate() {
+        updatedAt = LocalDateTime.now();
+        if (status == BacklogItemStatus.DONE && completedAt == null) {
+            completedAt = LocalDateTime.now();
         }
     }
 }

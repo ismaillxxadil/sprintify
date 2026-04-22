@@ -13,6 +13,7 @@ import com.sprintify.project_service.dto.CreateProjectRequestDTO;
 import com.sprintify.project_service.dto.InviteDecisionRequestDTO;
 import com.sprintify.project_service.dto.InviteRequestDTO;
 import com.sprintify.project_service.dto.InviteResponseDTO;
+import com.sprintify.project_service.dto.ProjectMemberResponseDTO;
 import com.sprintify.project_service.dto.ProjectResponseDTO;
 import com.sprintify.project_service.entity.Project;
 import com.sprintify.project_service.entity.ProjectMember;
@@ -141,6 +142,47 @@ public class ProjectService {
         }
 
         projectRepository.delete(project);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProjectMemberResponseDTO> getProjectMembers(UUID projectId) {
+        projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
+
+        return projectMemberRepository.findAllByProject_Id(projectId)
+                .stream()
+                .map(member -> new ProjectMemberResponseDTO(
+                        member.getUserId(),
+                        member.getRole(),
+                        member.getStatus(),
+                        member.getJoinedAt()
+                ))
+                .toList();
+    }
+
+    @Transactional
+    public void deleteMember(UUID projectId, UUID memberId, UUID requesterId) {
+        projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
+
+        boolean isPo = projectMemberRepository.existsByProject_IdAndUserIdAndRole(
+                projectId,
+                requesterId,
+                ProjectMemberRole.PO
+        );
+
+        if (!isPo) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the project PO can remove members");
+        }
+
+        ProjectMember memberToDelete = projectMemberRepository.findByProject_IdAndUserId(projectId, memberId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Member not found in this project"));
+
+        if (memberToDelete.getRole() == ProjectMemberRole.PO) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Cannot remove the project owner");
+        }
+
+        projectMemberRepository.delete(memberToDelete);
     }
 
     private ProjectResponseDTO toResponse(Project project, UUID ownerId) {

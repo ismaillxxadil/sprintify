@@ -1,5 +1,5 @@
 @baseUrl = http://localhost:8081
-@email = user2fي4@example.com
+@email = user2@example.com
 @password = StrongPass123
 
 ### Signup - create a new user

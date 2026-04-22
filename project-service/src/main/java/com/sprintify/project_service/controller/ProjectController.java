@@ -21,6 +21,7 @@ import com.sprintify.project_service.dto.CreateProjectRequestDTO;
 import com.sprintify.project_service.dto.InviteRequestDTO;
 import com.sprintify.project_service.dto.InviteResponseDTO;
 import com.sprintify.project_service.dto.InviteDecisionRequestDTO;
+import com.sprintify.project_service.dto.ProjectMemberResponseDTO;
 import com.sprintify.project_service.dto.ProjectResponseDTO;
 import com.sprintify.project_service.service.ProjectService;
 
@@ -53,6 +54,7 @@ public class ProjectController {
 		return ResponseEntity.ok().build();
 	}
 
+	//Get all pending invites for the authenticated user
 	@GetMapping("/invites/me")
 	public ResponseEntity<List<InviteResponseDTO>> getMyInvites(
 			@RequestHeader("X-User-Id") String userId
@@ -60,13 +62,16 @@ public class ProjectController {
 		return ResponseEntity.ok(projectService.getMyPendingInvites(parseUserId(userId)));
 	}
 
+
 	@PutMapping("/{projectId}/invites/respond")
 	public ResponseEntity<Void> respondToInvite(
 			@PathVariable UUID projectId,
 			@RequestHeader("X-User-Id") String userId,
 			@Valid @RequestBody InviteDecisionRequestDTO request
 	) {
-		projectService.respondToInvite(projectId, parseUserId(userId), request);
+
+		//return the updated invite status to the user
+		 projectService.respondToInvite(projectId, parseUserId(userId), request);
 		return ResponseEntity.ok().build();
 	}
 
@@ -76,6 +81,23 @@ public class ProjectController {
 			@RequestHeader("X-User-Id") String userId
 	) {
 		projectService.deleteProject(projectId, parseUserId(userId));
+		return ResponseEntity.noContent().build();
+	}
+
+	@GetMapping("/{projectId}/members")
+	public ResponseEntity<List<ProjectMemberResponseDTO>> getProjectMembers(
+			@PathVariable UUID projectId
+	) {
+		return ResponseEntity.ok(projectService.getProjectMembers(projectId));
+	}
+
+	@DeleteMapping("/{projectId}/members/{memberId}")
+	public ResponseEntity<Void> removeMember(
+			@PathVariable UUID projectId,
+			@PathVariable UUID memberId,
+			@RequestHeader("X-User-Id") String userId
+	) {
+		projectService.deleteMember(projectId, memberId, parseUserId(userId));
 		return ResponseEntity.noContent().build();
 	}
 
