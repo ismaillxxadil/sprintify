@@ -1,122 +1,189 @@
-@gateway = http://localhost:8080
-@identityServicePath = /identity-service
-@projectServicePath = /project-service
-@poEmail = po-ismail@example.com
-@poPassword = Pass@12345
-@inviteeEmail = dev1@example.com
-@inviteePassword = Pass@12345
-@projectName = Invite Flow Project
-@projectDescription = Project used to test invite flow
+@projectService = http://localhost:8082
 
-### 1) Signup PO (run once; may return 400 if already exists)
-POST {{gateway}}{{identityServicePath}}/api/v1/auth/signup
-Content-Type: application/json
+# Use real user IDs from Identity Service.
+@poUserId = cc2aa006-5542-4ad9-a0b9-754cae0e6052
+@devUserId = d75d8764-216d-4433-a894-e5e9b44ce557
 
-{
-  "email": "{{poEmail}}",
-  "password": "{{poPassword}}"
-}
-
-### 2) Signup Invitee (run once; may return 400 if already exists)
-POST {{gateway}}{{identityServicePath}}/api/v1/auth/signup
-Content-Type: application/json
-
-{
-  "email": "{{inviteeEmail}}",
-  "password": "{{inviteePassword}}"
-}
-
-### 3) Login PO and capture JWT
-# @name poLogin
-POST {{gateway}}{{identityServicePath}}/api/v1/auth/login
-Content-Type: application/json
-
-{
-  "email": "{{poEmail}}",
-  "password": "{{poPassword}}"
-}
-
-### 4) Login Invitee and capture JWT
-# @name inviteeLogin
-POST {{gateway}}{{identityServicePath}}/api/v1/auth/login
-Content-Type: application/json
-
-{
-  "email": "{{inviteeEmail}}",
-  "password": "{{inviteePassword}}"
-}
-
-### 5) Create project as PO (PO becomes ACTIVE member)
+### 1) Create Project (PO)
 # @name createProject
-POST {{gateway}}{{projectServicePath}}/api/v1/projects/create
-Authorization: Bearer {{poLogin.response.body.token}}
+POST {{projectService}}/api/v1/projects/create
+X-User-Id: {{poUserId}}
 Content-Type: application/json
 
 {
-  "name": "{{projectName}}",
-  "description": "{{projectDescription}}",
+  "name": "Sprint Flow Project",
+  "description": "Project for backlog and sprint flow testing",
   "state": "ACTIVE"
 }
 
-### 6) PO invites user to project as DEV (status starts as PENDING)
-POST {{gateway}}{{projectServicePath}}/api/v1/projects/{{createProject.response.body.id}}/invites
-Authorization: Bearer {{poLogin.response.body.token}}
+### 2) (Optional) Invite DEV to project
+POST {{projectService}}/api/v1/projects/{{createProject.response.body.id}}/invites
+X-User-Id: {{poUserId}}
 Content-Type: application/json
 
 {
-  "email": "{{inviteeEmail}}",
+  "email": "user2@example.com",
   "role": "DEV"
 }
 
-### 7) Invitee lists my pending invites
-# @name myInvites
-GET {{gateway}}{{projectServicePath}}/api/v1/projects/invites/me
-Authorization: Bearer {{inviteeLogin.response.body.token}}
-
-### 8) Invitee responds ACCEPT
-PUT {{gateway}}{{projectServicePath}}/api/v1/projects/{{createProject.response.body.id}}/invites/respond
-Authorization: Bearer {{inviteeLogin.response.body.token}}
+### 3) Create Epic (PO)
+# @name createEpic
+POST {{projectService}}/api/v1/projects/{{createProject.response.body.id}}/backlog-items
+X-User-Id: {{poUserId}}
 Content-Type: application/json
 
 {
-  "decision": "ACCEPT"
+  "type": "EPIC",
+  "title": "User Management",
+  "description": "Top-level epic for user and access management",
+  "priority": "HIGH",
+  "difficulty": "MEDIUM",
+  "estimatedPoints": 13
 }
 
-### 9) Optional: Create another project to test REJECT path
-# @name createProjectReject
-POST {{gateway}}{{projectServicePath}}/api/v1/projects/create
-Authorization: Bearer {{poLogin.response.body.token}}
+### 4) Create User Story under Epic (PO)
+# @name createStory
+POST {{projectService}}/api/v1/projects/{{createProject.response.body.id}}/backlog-items
+X-User-Id: {{poUserId}}
 Content-Type: application/json
 
 {
-  "name": "{{projectName}} REJECT",
-  "description": "Project used to test reject response",
-  "state": "ACTIVE"
+  "type": "USER_STORY",
+  "title": "As a user, I can update my profile",
+  "description": "Profile form with validation",
+  "parentId": "{{createEpic.response.body.id}}",
+  "priority": "MEDIUM",
+  "difficulty": "MEDIUM",
+  "estimatedPoints": 5
 }
 
-### 10) Optional: PO invites same user to second project
-POST {{gateway}}{{projectServicePath}}/api/v1/projects/{{createProjectReject.response.body.id}}/invites
-Authorization: Bearer {{poLogin.response.body.token}}
+### 5) (Optional) Create Task under Story (DEV)
+# Requires devUserId to be an active project member with DEV role.
+# @name createTask
+POST {{projectService}}/api/v1/projects/{{createProject.response.body.id}}/backlog-items
+X-User-Id: {{devUserId}}
 Content-Type: application/json
 
 {
-  "email": "{{inviteeEmail}}",
-  "role": "SM"
+  "type": "TASK",
+  "title": "Implement profile update endpoint",
+  "description": "Add service and controller logic",
+  "parentId": "{{createStory.response.body.id}}",
+  "priority": "MEDIUM",
+  "difficulty": "EASY",
+  "estimatedPoints": 3
 }
 
-### 11) Optional: Invitee responds REJECT on second project
-PUT {{gateway}}{{projectServicePath}}/api/v1/projects/{{createProjectReject.response.body.id}}/invites/respond
-Authorization: Bearer {{inviteeLogin.response.body.token}}
+### 6) Update Story fields (general PATCH)
+PATCH {{projectService}}/api/v1/projects/{{createProject.response.body.id}}/backlog-items/{{createStory.response.body.id}}
+X-User-Id: {{poUserId}}
 Content-Type: application/json
 
 {
-  "decision": "REJECT"
+  "description": "Profile form with server-side validation and audit log",
+  "priority": "HIGH",
+  "estimatedPoints": 8,
+  "estimatedHours": 12
 }
 
-### 12) Cleanup: Delete first project as PO
-DELETE {{gateway}}{{projectServicePath}}/api/v1/projects/{{createProject.response.body.id}}
-Authorization: Bearer {{poLogin.response.body.token}}
+### 7) Assign Story to PO (dedicated assign endpoint)
+PATCH {{projectService}}/api/v1/projects/{{createProject.response.body.id}}/backlog-items/{{createStory.response.body.id}}/assign
+X-User-Id: {{poUserId}}
+Content-Type: application/json
 
-### 13) Cleanup: Delete second project as PO
-DELETE {{gateway}}{{projectServicePath}}/api/v1/projects/{{createProjectReject.response.body.id}}
-Authorization: Bearer {{poLogin.response.body.token}}
+{
+  "assigneeId": "{{poUserId}}"
+}
+
+### 8) Create Sprint (PO)
+# @name createSprint
+POST {{projectService}}/api/v1/projects/{{createProject.response.body.id}}/sprints
+X-User-Id: {{poUserId}}
+Content-Type: application/json
+
+{
+  "title": "Sprint 1",
+  "startDate": "2026-04-21",
+  "endDate": "2026-04-28",
+  "sprintGoal": "Deliver first user profile capabilities"
+}
+
+### 9) Add Story to Sprint (planning only)
+POST {{projectService}}/api/v1/projects/{{createProject.response.body.id}}/sprints/{{createSprint.response.body.id}}/items
+X-User-Id: {{poUserId}}
+Content-Type: application/json
+
+{
+  "itemIds": [
+    "{{createStory.response.body.id}}"
+  ]
+}
+
+### 10) Start Sprint
+POST {{projectService}}/api/v1/projects/{{createProject.response.body.id}}/sprints/{{createSprint.response.body.id}}/start
+X-User-Id: {{poUserId}}
+Content-Type: application/json
+
+{
+  "comment": "Sprint kickoff"
+}
+
+### 11) Move story status to IN_PROGRESS
+PATCH {{projectService}}/api/v1/projects/{{createProject.response.body.id}}/backlog-items/{{createStory.response.body.id}}/status
+X-User-Id: {{poUserId}}
+Content-Type: application/json
+
+{
+  "status": "IN_PROGRESS",
+  "comment": "Work started"
+}
+
+### 12) Move story status to DONE
+PATCH {{projectService}}/api/v1/projects/{{createProject.response.body.id}}/backlog-items/{{createStory.response.body.id}}/status
+X-User-Id: {{poUserId}}
+Content-Type: application/json
+
+{
+  "status": "DONE",
+  "comment": "Completed"
+}
+
+### 13) Complete Sprint
+POST {{projectService}}/api/v1/projects/{{createProject.response.body.id}}/sprints/{{createSprint.response.body.id}}/complete
+X-User-Id: {{poUserId}}
+Content-Type: application/json
+
+{
+  "comment": "Sprint closed"
+}
+
+### 14) Validate sprint details and velocity
+GET {{projectService}}/api/v1/projects/{{createProject.response.body.id}}/sprints/{{createSprint.response.body.id}}
+
+### 15) Validate backlog list (items not in sprint)
+GET {{projectService}}/api/v1/projects/{{createProject.response.body.id}}/backlog-items
+
+### 16) Validate sprint items list
+GET {{projectService}}/api/v1/projects/{{createProject.response.body.id}}/backlog-items?sprintId={{createSprint.response.body.id}}
+
+### 17) Unassign Story (tests nullable assigneeId)
+PATCH {{projectService}}/api/v1/projects/{{createProject.response.body.id}}/backlog-items/{{createStory.response.body.id}}/assign
+X-User-Id: {{poUserId}}
+Content-Type: application/json
+
+{
+  "assigneeId": null
+}
+
+### 18) Move Story back to backlog (tests nullable sprintId)
+PATCH {{projectService}}/api/v1/projects/{{createProject.response.body.id}}/backlog-items/{{createStory.response.body.id}}/sprint
+X-User-Id: {{poUserId}}
+Content-Type: application/json
+
+{
+  "sprintId": null
+}
+
+### 19) Cleanup: Delete project
+DELETE {{projectService}}/api/v1/projects/{{createProject.response.body.id}}
+X-User-Id: {{poUserId}}
