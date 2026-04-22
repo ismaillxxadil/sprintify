@@ -113,23 +113,33 @@ public class BacklogItemService {
     // ============ READ ============
 
     @Transactional(readOnly = true)
-    public BacklogItemResponseDTO getBacklogItem(UUID projectId, UUID itemId) {
+    public BacklogItemResponseDTO getBacklogItem(UUID projectId, UUID userId, UUID itemId) {
+        validateTeamMember(userId, projectId);
+
         BacklogItem item = backlogItemRepository.findByIdAndProject_Id(itemId, projectId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Item not found"));
         return toResponse(item);
     }
 
     @Transactional(readOnly = true)
-    public BacklogItemDetailResponseDTO getBacklogItemWithChildren(UUID projectId, UUID itemId) {
+    public BacklogItemDetailResponseDTO getBacklogItemWithChildren(UUID projectId, UUID userId, UUID itemId) {
+        validateTeamMember(userId, projectId);
+
         BacklogItem item = backlogItemRepository.findByIdAndProject_Id(itemId, projectId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Item not found"));
         return toDetailResponse(item);
     }
 
     @Transactional(readOnly = true)
-    public Page<BacklogItemResponseDTO> listBacklogItems(UUID projectId, UUID sprintId, Pageable pageable) {
+    public Page<BacklogItemResponseDTO> listBacklogItems(UUID projectId, UUID userId, UUID sprintId, Pageable pageable) {
+        validateTeamMember(userId, projectId);
+
         if (sprintId != null) {
-            return backlogItemRepository.findAllBySprintIdOrderByBacklogOrderAsc(sprintId)
+            if (!sprintRepository.existsByIdAndProject_Id(sprintId, projectId)) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Sprint not found in this project");
+            }
+
+            return backlogItemRepository.findAllByProject_IdAndSprint_IdOrderByBacklogOrderAsc(projectId, sprintId)
                     .stream()
                     .map(this::toResponse)
                     .collect(Collectors.collectingAndThen(

@@ -20,6 +20,9 @@ public interface BacklogItemRepository extends JpaRepository<BacklogItem, UUID> 
     @Query("SELECT b FROM BacklogItem b WHERE b.project.id = :projectId AND b.sprint IS NULL ORDER BY b.backlogOrder ASC")
     List<BacklogItem> findAllBacklogItems(@Param("projectId") UUID projectId);
     
+    // Find items in a sprint scoped to a project
+    List<BacklogItem> findAllByProject_IdAndSprint_IdOrderByBacklogOrderAsc(UUID projectId, UUID sprintId);
+
     // Find items in a sprint
     List<BacklogItem> findAllBySprintIdOrderByBacklogOrderAsc(UUID sprintId);    
     // Find all children of a parent item

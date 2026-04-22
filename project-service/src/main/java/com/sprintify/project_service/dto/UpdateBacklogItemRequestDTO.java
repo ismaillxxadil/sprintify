@@ -2,10 +2,12 @@ package com.sprintify.project_service.dto;
 
 import com.sprintify.project_service.entity.enums.Difficulty;
 import com.sprintify.project_service.entity.enums.Priority;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 public record UpdateBacklogItemRequestDTO(
+        @Pattern(regexp = ".*\\S.*", message = "Title must not be blank")
         @Size(max = 200, message = "Title must be max 200 characters")
         String title,
 

@@ -40,10 +40,11 @@ public class BacklogItemController {
     @GetMapping
     public ResponseEntity<Page<BacklogItemResponseDTO>> listBacklogItems(
             @PathVariable UUID projectId,
+            @RequestHeader("X-User-Id") String userId,
             @RequestParam(required = false) UUID sprintId,
             Pageable pageable
     ) {
-        return ResponseEntity.ok(backlogItemService.listBacklogItems(projectId, sprintId, pageable));
+        return ResponseEntity.ok(backlogItemService.listBacklogItems(projectId, parseUserId(userId), sprintId, pageable));
     }
 
     /**
@@ -53,9 +54,10 @@ public class BacklogItemController {
     @GetMapping("/{itemId}")
     public ResponseEntity<BacklogItemDetailResponseDTO> getBacklogItem(
             @PathVariable UUID projectId,
+            @RequestHeader("X-User-Id") String userId,
             @PathVariable UUID itemId
     ) {
-        return ResponseEntity.ok(backlogItemService.getBacklogItemWithChildren(projectId, itemId));
+        return ResponseEntity.ok(backlogItemService.getBacklogItemWithChildren(projectId, parseUserId(userId), itemId));
     }
 
     /**
