@@ -13,7 +13,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 @Aspect
 @Component
@@ -23,6 +28,14 @@ public class GenericAuditLoggingAspect {
 
     private static final String USER_ID_HEADER = "X-User-Id";
     private static final String UNKNOWN_USER_ID = "UNKNOWN_USER";
+    private static final String REDACTED_VALUE = "***REDACTED***";
+    private static final Set<String> SENSITIVE_FIELD_KEYS = Set.of(
+            "password",
+            "token",
+            "secret",
+            "credential",
+            "authorization"
+    );
 
     private final AsyncAuditLogService asyncAuditLogService;
     private final ObjectMapper objectMapper;
@@ -50,6 +63,7 @@ public class GenericAuditLoggingAspect {
                         ? Map.of("requestData", args[0])
                         : objectMapper.convertValue(args[0], Map.class);
             }
+            detailsMap = redactSensitiveData(detailsMap);
 
             String entityId = extractIdFromResult(result);
 
@@ -88,5 +102,58 @@ public class GenericAuditLoggingAspect {
         } catch (Exception e) {
             return "N/A";
         }
+    }
+
+    private Map<String, Object> redactSensitiveData(Map<String, Object> detailsMap) {
+        if (detailsMap == null || detailsMap.isEmpty()) {
+            return detailsMap;
+        }
+
+        Map<String, Object> sanitizedDetails = new LinkedHashMap<>();
+        for (Map.Entry<String, Object> entry : detailsMap.entrySet()) {
+            if (isSensitiveField(entry.getKey())) {
+                sanitizedDetails.put(entry.getKey(), REDACTED_VALUE);
+                continue;
+            }
+            sanitizedDetails.put(entry.getKey(), sanitizeValue(entry.getValue()));
+        }
+        return sanitizedDetails;
+    }
+
+    private Object sanitizeValue(Object value) {
+        if (value instanceof Map<?, ?> nestedMap) {
+            Map<String, Object> sanitizedMap = new LinkedHashMap<>();
+            for (Map.Entry<?, ?> nestedEntry : nestedMap.entrySet()) {
+                String key = String.valueOf(nestedEntry.getKey());
+                if (isSensitiveField(key)) {
+                    sanitizedMap.put(key, REDACTED_VALUE);
+                    continue;
+                }
+                sanitizedMap.put(key, sanitizeValue(nestedEntry.getValue()));
+            }
+            return sanitizedMap;
+        }
+        if (value instanceof List<?> listValue) {
+            List<Object> sanitizedList = new ArrayList<>(listValue.size());
+            for (Object item : listValue) {
+                sanitizedList.add(sanitizeValue(item));
+            }
+            return sanitizedList;
+        }
+        return value;
+    }
+
+    private boolean isSensitiveField(String fieldName) {
+        if (fieldName == null) {
+            return false;
+        }
+
+        String normalizedField = fieldName.toLowerCase(Locale.ROOT);
+        for (String sensitiveKey : SENSITIVE_FIELD_KEYS) {
+            if (normalizedField.contains(sensitiveKey)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
