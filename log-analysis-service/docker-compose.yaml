@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  log-db:
+    image: postgres:15
+    container_name: log-db
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: log_db
+    ports:
+      - "5334:5432"
+    networks:
+      - sprintify-network
+
+networks:
+  sprintify-network:
+    driver: bridge
