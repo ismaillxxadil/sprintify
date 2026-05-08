@@ -1,0 +1,18 @@
+version: "3.8"
+
+services:
+  gamification-db:
+    image: postgres:15
+    container_name: gamification-db
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: gamification_db
+    ports:
+      - "5335:5432"
+    networks:
+      - sprintify-network
+
+networks:
+  sprintify-network:
+    external: true

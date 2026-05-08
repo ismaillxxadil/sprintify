@@ -30,6 +30,7 @@ public class BacklogItemService {
     private final ProjectMemberRepository projectMemberRepository;
     private final ProjectRepository projectRepository;
     private final SprintRepository sprintRepository;
+    private final AsyncGamificationService asyncGamificationService;
 
     // ============ AUTHORIZATION HELPERS ============
     // These methods check if the user is a member of the project and has the required role for certain actions.
@@ -202,12 +203,20 @@ public class BacklogItemService {
         BacklogItem item = backlogItemRepository.findByIdAndProject_Id(itemId, projectId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Item not found"));
 
+        BacklogItemStatus previousStatus = item.getStatus();
         item.setStatus(request.status());
         if (request.status() == BacklogItemStatus.DONE) {
             item.setCompletedAt(LocalDateTime.now());
         }
 
         BacklogItem saved = backlogItemRepository.save(item);
+
+        boolean transitionedToDone = previousStatus != BacklogItemStatus.DONE && saved.getStatus() == BacklogItemStatus.DONE;
+        boolean isTaskType = saved.getType() == BacklogItemType.TASK || saved.getType() == BacklogItemType.BUG;
+        if (transitionedToDone && isTaskType && saved.getAssigneeId() != null) {
+            asyncGamificationService.awardTaskCompletionXp(saved.getAssigneeId().toString());
+        }
+
         return toResponse(saved);
     }
 
