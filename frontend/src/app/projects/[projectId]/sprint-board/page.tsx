@@ -1,9 +1,7 @@
 "use client";
+import { use, useEffect, useState } from "react"; // إضافة use
+import { Circle, Clock, CheckCircle2, Zap, Plus, UserPlus, ArrowRight } from "lucide-react";
 
-import { useEffect, useState } from "react";
-import { Circle, Clock, CheckCircle2, Zap, Calendar, Plus, UserPlus, ArrowRight } from "lucide-react";
-
-// داتا وهمية مطورة لتدعم الـ Self-assign
 const INITIAL_TASKS = [
   { id: "T-101", name: "Complete Use Case Diagram", assignee: "Qorashi", xp: 150, difficulty: "High", type: "Docs", est: "4h", status: "DONE" },
   { id: "T-102", name: "Setup Firebase Database", assignee: "Unassigned", xp: 300, difficulty: "High", type: "Backend", est: "8h", status: "TO_DO" },
@@ -11,7 +9,9 @@ const INITIAL_TASKS = [
   { id: "T-104", name: "Create Class Diagram", assignee: "Unassigned", xp: 150, difficulty: "Medium", type: "Design", est: "3h", status: "TO_DO" },
 ];
 
-export default function SprintBoard() {
+export default function SprintBoard({ params }: { params: Promise<{ projectId: string }> }) {
+  // فك تغليف الـ params
+  const { projectId } = use(params);
   const [tasks, setTasks] = useState(INITIAL_TASKS);
   const [user, setUser] = useState({ name: "", role: "" });
 
@@ -22,12 +22,10 @@ export default function SprintBoard() {
     });
   }, []);
 
-  // Use Case: Update Task Status
   const moveTask = (taskId: string, newStatus: string) => {
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus as any } : t));
   };
 
-  // Use Case: Self-assign Task
   const selfAssign = (taskId: string) => {
     setTasks(prev => prev.map(t => t.id === taskId ? { ...t, assignee: user.name } : t));
   };
@@ -42,13 +40,14 @@ export default function SprintBoard() {
     <div className="max-w-6xl mx-auto">
       <div className="flex justify-between items-end mb-10">
         <div>
-          <h1 className="text-3xl font-black text-[#1B3C53] flex items-center gap-3 uppercase tracking-tighter"><Zap className="fill-[#1B3C53]" /> Sprint Board</h1>
-          <p className="text-[#4A708B] text-[10px] font-black uppercase tracking-[0.2em] mt-2">Role: {user.role} | Mission: Task Execution</p>
+          <h1 className="text-3xl font-black text-[#1B3C53] flex items-center gap-3 uppercase tracking-tighter">
+            <Zap className="fill-[#1B3C53]" /> {projectId} Board
+          </h1>
+          <p className="text-[#4A708B] text-[10px] font-black uppercase tracking-[0.2em] mt-2">Active Sprint Context: {projectId}</p>
         </div>
         
-        {/* الميزة الإدارية تظهر فقط لغير المطورين */}
         {user.role !== "DEVELOPER" && (
-          <button className="bg-[#1B3C53] text-[#FAF5F0] px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg text-sm uppercase tracking-widest active:scale-95 transition-all">
+          <button className="bg-[#1B3C53] text-[#FAF5F0] px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg text-sm uppercase active:scale-95 transition-all">
             <Plus size={18}/> Create Sprint
           </button>
         )}
@@ -72,30 +71,17 @@ export default function SprintBoard() {
                   <h3 className="text-sm font-bold text-[#1B3C53] mb-1">{task.name}</h3>
                   <p className="text-[10px] font-bold text-[#4A708B] uppercase mb-4 tracking-tighter">{task.type}</p>
                   
-                  {/* Actions Area */}
                   <div className="space-y-3 mb-5">
-                    {/* Self Assign Button */}
                     {task.assignee === "Unassigned" && user.role === "DEVELOPER" && (
-                      <button 
-                        onClick={() => selfAssign(task.id)}
-                        className="w-full py-2 bg-blue-50 text-blue-600 text-[10px] font-black uppercase rounded-xl border border-blue-100 flex items-center justify-center gap-2 hover:bg-blue-600 hover:text-white transition-all"
-                      >
-                        <UserPlus size={14} /> Self-Assign Task
-                      </button>
+                      <button onClick={() => selfAssign(task.id)} className="w-full py-2 bg-blue-50 text-blue-600 text-[10px] font-black uppercase rounded-xl border border-blue-100 flex items-center justify-center gap-2 hover:bg-blue-600 hover:text-white transition-all"><UserPlus size={14} /> Self-Assign</button>
                     )}
-
-                    {/* Status Update Buttons - Only for Developer if assigned to them */}
                     {user.role === "DEVELOPER" && task.assignee === user.name && (
                       <div className="flex gap-2">
                         {task.status === "TO_DO" && (
-                          <button onClick={() => moveTask(task.id, "IN_PROGRESS")} className="flex-1 py-2 bg-amber-50 text-amber-600 text-[10px] font-black uppercase rounded-xl border border-amber-100 flex items-center justify-center gap-1 hover:bg-amber-500 hover:text-white transition-all">
-                            Start <ArrowRight size={12}/>
-                          </button>
+                          <button onClick={() => moveTask(task.id, "IN_PROGRESS")} className="flex-1 py-2 bg-amber-50 text-amber-600 text-[10px] font-black uppercase rounded-xl border border-amber-100 flex items-center justify-center gap-1 hover:bg-amber-500 hover:text-white transition-all">Start <ArrowRight size={12}/></button>
                         )}
                         {task.status === "IN_PROGRESS" && (
-                          <button onClick={() => moveTask(task.id, "DONE")} className="flex-1 py-2 bg-green-50 text-green-600 text-[10px] font-black uppercase rounded-xl border border-green-100 flex items-center justify-center gap-1 hover:bg-green-600 hover:text-white transition-all">
-                            Complete <CheckCircle2 size={12}/>
-                          </button>
+                          <button onClick={() => moveTask(task.id, "DONE")} className="flex-1 py-2 bg-green-50 text-green-600 text-[10px] font-black uppercase rounded-xl border border-green-100 flex items-center justify-center gap-1 hover:bg-green-600 hover:text-white transition-all">Complete <CheckCircle2 size={12}/></button>
                         )}
                       </div>
                     )}
@@ -103,14 +89,11 @@ export default function SprintBoard() {
 
                   <div className="pt-4 border-t border-[#FAF5F0] flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 bg-[#1B3C53] rounded-full flex items-center justify-center text-[8px] text-white font-bold">
-                        {task.assignee === "Unassigned" ? "?" : task.assignee[0]}
-                      </div>
+                      <div className="w-6 h-6 bg-[#1B3C53] rounded-full flex items-center justify-center text-[8px] text-white font-bold">{task.assignee === "Unassigned" ? "?" : task.assignee[0]}</div>
                       <span className="text-[10px] font-bold text-[#4A708B]">{task.assignee}</span>
                     </div>
                     <div className="text-right">
                       <div className="text-[#1B3C53] text-[10px] font-black">+{task.xp} XP</div>
-                      <div className="text-[8px] text-[#C9BBAF] font-mono flex items-center gap-1 justify-end mt-1"><Clock size={10}/> Est: {task.est}</div>
                     </div>
                   </div>
                 </div>
