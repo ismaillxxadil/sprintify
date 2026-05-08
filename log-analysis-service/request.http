@@ -1,0 +1,49 @@
+@logService = http://localhost:8083
+
+# Test Variables
+@actorId = user-123
+@entityType = PROJECT
+@entityId = project-456
+
+### 1) POST - Save a Log Entry
+# @name saveLog
+POST {{logService}}/api/logs
+Content-Type: application/json
+
+{
+  "actorId": "{{actorId}}",
+  "actionType": "CREATE_PROJECT",
+  "entityType": "{{entityType}}",
+  "entityId": "{{entityId}}",
+  "details": {
+    "projectName": "New Sprint Project",
+    "description": "A project for sprint management",
+    "timestamp": "2026-05-07T16:34:00Z"
+  }
+}
+
+### 2) POST - Save Another Log Entry
+POST {{logService}}/api/logs
+Content-Type: application/json
+
+{
+  "actorId": "user-789",
+  "actionType": "UPDATE_TASK",
+  "entityType": "TASK",
+  "entityId": "task-001",
+  "details": {
+    "taskName": "Implement Login",
+    "status": "IN_PROGRESS",
+    "assignee": "dev-user",
+    "timestamp": "2026-05-07T16:35:00Z"
+  }
+}
+
+### 3) GET - Get All Logs for a User
+GET {{logService}}/api/logs/user/{{actorId}}
+
+### 4) GET - Get Logs by Entity Type and ID
+GET {{logService}}/api/logs/entity/{{entityType}}/{{entityId}}
+
+### 5) GET - Get All Logs
+GET {{logService}}/api/logs/all
