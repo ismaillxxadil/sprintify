@@ -35,7 +35,7 @@ export default function ProjectDashboardPage() {
   // Validate projectId
   if (!projectId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId)) {
     return (
-      <AppShell>
+      <AppShell title="Invalid project" description="The provided project ID is not valid.">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-red-600 mb-4">Invalid Project ID</h1>
@@ -70,11 +70,27 @@ export default function ProjectDashboardPage() {
   })
   const [sprintForm, setSprintForm] = useState({ title: '', startDate: '', endDate: '', sprintGoal: '' })
   const [addItemInputs, setAddItemInputs] = useState<Record<string, string>>({})
+  const [selectedTask, setSelectedTask] = useState<BacklogItem | null>(null)
+  const [taskForm, setTaskForm] = useState({
+    title: '',
+    description: '',
+    status: 'TODO' as BacklogItemStatus,
+    priority: 'MEDIUM' as Priority,
+    difficulty: 'MEDIUM' as Difficulty,
+    estimatedPoints: '',
+    assigneeId: '',
+  })
 
   const canManageMembers = project?.currentUserRole === 'PO'
   const canManageSprints = project?.currentUserRole === 'PO' || project?.currentUserRole === 'SM'
   const canCreateEpics = project?.currentUserRole === 'PO' || project?.currentUserRole === 'SM'
   const canCreateTasks = project?.currentUserRole === 'DEV'
+  const canAssignDevelopers = project?.currentUserRole === 'PO' || project?.currentUserRole === 'SM'
+  const canSelfAssignTasks = project?.currentUserRole === 'DEV'
+  const developerMembers = useMemo(
+    () => members.filter((member) => member.role === 'DEV'),
+    [members]
+  )
 
   const allowedBacklogTypes = useMemo<BacklogItemType[]>(() => {
     if (canCreateEpics) {
@@ -381,6 +397,108 @@ export default function ProjectDashboardPage() {
     }
   }
 
+  const backlogRows = useMemo(() => {
+    const itemsByParent = new Map<string, BacklogItem[]>()
+
+    backlog.forEach((item) => {
+      const parent = item.parentId || ''
+      const list = itemsByParent.get(parent) ?? []
+      list.push(item)
+      itemsByParent.set(parent, list)
+    })
+
+    const sortItems = (items: BacklogItem[]) =>
+      items.slice().sort((a, b) => {
+        const rank: Record<BacklogItemType, number> = {
+          EPIC: 0,
+          USER_STORY: 1,
+          TASK: 2,
+          BUG: 2,
+        }
+        const diff = rank[a.type] - rank[b.type]
+        if (diff !== 0) {
+          return diff
+        }
+        return a.title.localeCompare(b.title)
+      })
+
+    const rows: Array<{ item: BacklogItem; indent: number }> = []
+
+    const appendRows = (items: BacklogItem[], indent: number) => {
+      sortItems(items).forEach((item) => {
+        rows.push({ item, indent })
+        appendRows(itemsByParent.get(item.id) ?? [], indent + 1)
+      })
+    }
+
+    appendRows(sortItems(backlog.filter((item) => !item.parentId)), 0)
+    return rows
+  }, [backlog])
+
+  const openTaskModal = (item: BacklogItem) => {
+    setSelectedTask(item)
+    setTaskForm({
+      title: item.title,
+      description: item.description || '',
+      status: item.status,
+      priority: item.priority,
+      difficulty: item.difficulty,
+      estimatedPoints: item.estimatedPoints ? String(item.estimatedPoints) : '',
+      assigneeId: item.assigneeId || '',
+    })
+  }
+
+  const closeTaskModal = () => setSelectedTask(null)
+
+  const handleSaveTaskEdits = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!selectedTask) {
+      return
+    }
+
+    setBusyId(selectedTask.id)
+    try {
+      await projectApi.updateBacklogItem(projectId, selectedTask.id, {
+        title: taskForm.title.trim(),
+        description: taskForm.description.trim() || undefined,
+        priority: taskForm.priority,
+        difficulty: taskForm.difficulty,
+        estimatedPoints: taskForm.estimatedPoints ? Number(taskForm.estimatedPoints) : undefined,
+        assigneeId: taskForm.assigneeId || undefined,
+      })
+
+      if (selectedTask.status !== taskForm.status) {
+        await projectApi.updateBacklogStatus(projectId, selectedTask.id, taskForm.status)
+      }
+
+      toast.success('Task updated successfully.')
+      await loadData()
+      closeTaskModal()
+    } catch (error) {
+      toast.error(getApiErrorMessage(error))
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const handleAssignTaskToMe = async () => {
+    if (!selectedTask) {
+      return
+    }
+
+    setBusyId(selectedTask.id)
+    try {
+      await projectApi.assignBacklogItemToSelf(projectId, selectedTask.id)
+      toast.success('Task assigned to you.')
+      await loadData()
+      closeTaskModal()
+    } catch (error) {
+      toast.error(getApiErrorMessage(error))
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   if (!hydrated || !ready || user?.role === 'ADMIN') {
     return <LoadingScreen label="Loading project dashboard..." />
   }
@@ -417,19 +535,44 @@ export default function ProjectDashboardPage() {
         </div>
       }
     >
-      <div className="flex flex-wrap gap-2">
-        {(['overview', 'members', 'backlog', 'sprints'] as const).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            className={activeTab === tab ? 'button-primary' : 'button-secondary'}
-            onClick={() => setActiveTab(tab)}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
-      </div>
+      <div className="project-dashboard-shell">
+        <aside className="project-dashboard-sidebar">
+          <div className="sidebar-header">
+            <p className="text-xs uppercase tracking-[0.24em] text-slate-500 mb-3">Project navigation</p>
+            <h2 className="text-xl font-semibold text-slate-900">Dashboard</h2>
+            <p className="mt-2 text-sm text-slate-500">Keep the main sections always visible while you plan and execute.</p>
+          </div>
 
+          <nav className="sidebar-nav" aria-label="Project navigation">
+            {(['overview', 'members', 'backlog', 'sprints'] as const).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                className={activeTab === tab ? 'button-primary active' : 'button-secondary'}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </nav>
+
+          <div className="sidebar-summary">
+            <div className="summary-card">
+              <dt>Role</dt>
+              <dd>{project.currentUserRole}</dd>
+            </div>
+            <div className="summary-card">
+              <dt>Backlog</dt>
+              <dd>{backlog.length}</dd>
+            </div>
+            <div className="summary-card">
+              <dt>Sprints</dt>
+              <dd>{sprints.length}</dd>
+            </div>
+          </div>
+        </aside>
+
+        <div className="project-dashboard-main">
       {activeTab === 'overview' ? (
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <div className="panel">
@@ -705,87 +848,41 @@ export default function ProjectDashboardPage() {
           <section className="panel">
             <div className="mb-4 flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-slate-900">Backlog items</h2>
-                <p className="text-sm text-slate-500">Update status, self-assign work, or move items into sprints.</p>
+                <h2 className="text-lg font-semibold text-slate-900">Backlog board</h2>
+                <p className="text-sm text-slate-500">A Jira-inspired backlog view with a clear task hierarchy and full visibility.</p>
               </div>
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
                 {backlog.length} items
               </span>
             </div>
-            <div className="space-y-4">
-              {backlog.map((item) => (
-                <div key={item.id} className="rounded-2xl border border-slate-200 p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h3 className="font-semibold text-slate-900">{item.title}</h3>
-                      <p className="mt-1 text-sm text-slate-500">{item.description || 'No description provided.'}</p>
-                      <p className="mt-2 text-xs text-slate-500">Item ID: {item.id}</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <StatusPill label={item.type} />
-                      <StatusPill label={item.status} />
-                    </div>
-                  </div>
-                  <div className="mt-4 grid gap-3 text-sm text-slate-600 md:grid-cols-2 xl:grid-cols-4">
-                    <p>Priority: {item.priority}</p>
-                    <p>Difficulty: {item.difficulty}</p>
-                    <p>Points: {item.estimatedPoints ?? '—'}</p>
-                    <p>Sprint: {item.sprintId ? sprintLookup[item.sprintId] || item.sprintId : 'Backlog'}</p>
-                    <p>Assignee: {item.assigneeId || 'Unassigned'}</p>
-                    <p>Parent: {item.parentId || 'None'}</p>
-                  </div>
-                  <div className="mt-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <select
-                        className="select max-w-[190px]"
-                        value={item.status}
-                        onChange={(event) => void handleStatusChange(item.id, event.target.value as BacklogItemStatus)}
-                        disabled={busyId === item.id}
-                      >
-                        {backlogStatuses.map((status) => (
-                          <option key={status} value={status}>
-                            {status.replaceAll('_', ' ')}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        className="button-secondary"
-                        onClick={() => void handleSelfAssign(item.id)}
-                        disabled={busyId === item.id}
-                      >
-                        Assign to me
-                      </button>
-                      <button
-                        type="button"
-                        className="button-danger"
-                        onClick={() => void handleDeleteItem(item.id)}
-                        disabled={busyId === item.id}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                    {canManageSprints ? (
-                      <select
-                        className="select max-w-[240px]"
-                        value={item.sprintId || ''}
-                        onChange={(event) =>
-                          void handleMoveToSprint(item.id, event.target.value ? event.target.value : null)
-                        }
-                        disabled={busyId === item.id}
-                      >
-                        <option value="">Backlog</option>
-                        {sprints.map((sprint) => (
-                          <option key={sprint.id} value={sprint.id}>
-                            {sprint.title}
-                          </option>
-                        ))}
-                      </select>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
-              {backlog.length === 0 ? <p className="text-sm text-slate-500">No backlog items created yet.</p> : null}
+            <div className="overflow-x-auto">
+              <table className="backlog-table">
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Status</th>
+                    <th>Assignee</th>
+                    <th>Priority</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {backlogRows.map(({ item, indent }) => (
+                    <tr key={item.id} className="backlog-row" onClick={() => openTaskModal(item)}>
+                      <td className={`backlog-title-cell tree-indent-${indent}`}>
+                        <div className="backlog-title-wrapper">
+                          <p className="font-semibold text-slate-900">{item.title}</p>
+                          <p className="text-xs text-slate-500">{item.type.replaceAll('_', ' ')}</p>
+                        </div>
+                      </td>
+                      <td>
+                        <StatusPill label={item.status} />
+                      </td>
+                      <td>{item.assigneeId || 'Unassigned'}</td>
+                      <td>{item.priority}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </section>
         </div>
@@ -966,6 +1063,151 @@ export default function ProjectDashboardPage() {
               ))
             )}
           </section>
+        </div>
+      ) : null}
+        </div>
+      </div>
+
+      {selectedTask ? (
+        <div className="task-modal-overlay" onClick={closeTaskModal}>
+          <div className="task-modal" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}>
+            <div className="task-modal-header">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <StatusPill label={selectedTask.type} />
+                  <StatusPill label={selectedTask.status} />
+                </div>
+                <h2 className="mt-4 text-2xl font-bold text-slate-900">{selectedTask.title}</h2>
+                <p className="mt-2 text-sm text-slate-500">Task ID: {selectedTask.id}</p>
+              </div>
+              <button type="button" className="button-secondary task-modal-close" onClick={closeTaskModal}>
+                Close
+              </button>
+            </div>
+
+            <form className="task-modal-grid" onSubmit={handleSaveTaskEdits}>
+              <div className="task-modal-field">
+                <label className="text-sm font-medium text-slate-700">Title</label>
+                <input
+                  className="input"
+                  value={taskForm.title}
+                  onChange={(event) => setTaskForm((current) => ({ ...current, title: event.target.value }))}
+                />
+              </div>
+
+              <div className="task-modal-field">
+                <label className="text-sm font-medium text-slate-700">Description</label>
+                <textarea
+                  className="textarea"
+                  rows={4}
+                  value={taskForm.description}
+                  onChange={(event) => setTaskForm((current) => ({ ...current, description: event.target.value }))}
+                />
+              </div>
+
+              <div className="task-modal-field">
+                <label className="text-sm font-medium text-slate-700">Status</label>
+                <select
+                  className="select"
+                  value={taskForm.status}
+                  onChange={(event) =>
+                    setTaskForm((current) => ({ ...current, status: event.target.value as BacklogItemStatus }))
+                  }
+                >
+                  {backlogStatuses.map((status) => (
+                    <option key={status} value={status}>
+                      {status.replaceAll('_', ' ')}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="task-modal-field">
+                <label className="text-sm font-medium text-slate-700">Priority</label>
+                <select
+                  className="select"
+                  value={taskForm.priority}
+                  onChange={(event) =>
+                    setTaskForm((current) => ({ ...current, priority: event.target.value as Priority }))
+                  }
+                >
+                  {priorities.map((priority) => (
+                    <option key={priority} value={priority}>
+                      {priority}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="task-modal-field">
+                <label className="text-sm font-medium text-slate-700">Difficulty</label>
+                <select
+                  className="select"
+                  value={taskForm.difficulty}
+                  onChange={(event) =>
+                    setTaskForm((current) => ({ ...current, difficulty: event.target.value as Difficulty }))
+                  }
+                >
+                  {difficulties.map((difficulty) => (
+                    <option key={difficulty} value={difficulty}>
+                      {difficulty}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="task-modal-field">
+                <label className="text-sm font-medium text-slate-700">Estimated points</label>
+                <input
+                  className="input"
+                  type="number"
+                  min="0"
+                  value={taskForm.estimatedPoints}
+                  onChange={(event) =>
+                    setTaskForm((current) => ({ ...current, estimatedPoints: event.target.value }))
+                  }
+                />
+              </div>
+
+              <div className="task-modal-field">
+                <label className="text-sm font-medium text-slate-700">Assignee</label>
+                {canAssignDevelopers ? (
+                  <select
+                    className="select"
+                    value={taskForm.assigneeId}
+                    onChange={(event) => setTaskForm((current) => ({ ...current, assigneeId: event.target.value }))}
+                  >
+                    <option value="">Unassigned</option>
+                    {developerMembers.map((member) => (
+                      <option key={member.userId} value={member.userId}>
+                        {member.userId}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+                    {taskForm.assigneeId || 'Unassigned'}
+                  </div>
+                )}
+              </div>
+
+              <div className="task-modal-actions">
+                {canSelfAssignTasks && selectedTask.assigneeId !== user?.id ? (
+                  <button
+                    type="button"
+                    className="button-secondary"
+                    onClick={handleAssignTaskToMe}
+                    disabled={busyId === selectedTask.id}
+                  >
+                    Assign to me
+                  </button>
+                ) : null}
+                <button type="submit" className="button-primary" disabled={busyId === selectedTask.id}>
+                  Save changes
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       ) : null}
     </AppShell>
