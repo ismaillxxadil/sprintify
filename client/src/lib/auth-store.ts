@@ -1,51 +1,38 @@
+'use client'
+
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { buildSessionUser } from '@/lib/jwt'
+import { AuthResponse, SessionUser } from '@/lib/types'
 
-export type UserRole = 'ADMIN' | 'USER' | 'PO' | 'SM' | 'DEV'
-
-export interface AuthUser {
-  token: string
-  email: string
-  role: UserRole
-  userId?: string
-}
-
-interface AuthStore {
-  user: AuthUser | null
-  isAuthenticated: boolean
-  login: (user: AuthUser) => void
+interface AuthState {
+  hydrated: boolean
+  user: SessionUser | null
+  setSession: (response: AuthResponse) => void
   logout: () => void
-  setUser: (user: AuthUser) => void
+  setHydrated: (hydrated: boolean) => void
 }
 
-export const useAuthStore = create<AuthStore>()(
+export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
+      hydrated: false,
       user: null,
-      isAuthenticated: false,
-      login: (user: AuthUser) => {
-        set({ user, isAuthenticated: true })
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('token', user.token)
-          localStorage.setItem('role', user.role)
-          localStorage.setItem('email', user.email)
-        }
+      setSession: (response) => {
+        set({ hydrated: true, user: buildSessionUser(response) })
       },
       logout: () => {
-        set({ user: null, isAuthenticated: false })
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('token')
-          localStorage.removeItem('role')
-          localStorage.removeItem('email')
-          localStorage.removeItem('userId')
-        }
+        set({ hydrated: true, user: null })
       },
-      setUser: (user: AuthUser) => {
-        set({ user, isAuthenticated: true })
+      setHydrated: (hydrated) => {
+        set({ hydrated })
       },
     }),
     {
-      name: 'auth-store',
+      name: 'sprintify-auth',
+      onRehydrateStorage: () => (state) => {
+        state?.setHydrated(true)
+      },
     }
   )
 )

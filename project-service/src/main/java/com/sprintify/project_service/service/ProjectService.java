@@ -13,6 +13,7 @@ import com.sprintify.project_service.dto.CreateProjectRequestDTO;
 import com.sprintify.project_service.dto.InviteDecisionRequestDTO;
 import com.sprintify.project_service.dto.InviteRequestDTO;
 import com.sprintify.project_service.dto.InviteResponseDTO;
+import com.sprintify.project_service.dto.MyProjectResponseDTO;
 import com.sprintify.project_service.dto.ProjectMemberResponseDTO;
 import com.sprintify.project_service.dto.ProjectResponseDTO;
 import com.sprintify.project_service.entity.Project;
@@ -92,6 +93,14 @@ public class ProjectService {
                 .build();
 
         projectMemberRepository.save(invitedMember);
+    }
+
+    @Transactional(readOnly = true)
+    public List<MyProjectResponseDTO> getMyProjects(UUID userId) {
+        return projectMemberRepository.findAllByUserIdAndStatusOrderByJoinedAtDesc(userId, ProjectMemberStatus.ACTIVE)
+                .stream()
+                .map(this::toMyProjectResponse)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -194,6 +203,31 @@ public class ProjectService {
                 ownerId,
                 project.getCreatedAt(),
                 project.getMembers().size()
+        );
+    }
+
+    private MyProjectResponseDTO toMyProjectResponse(ProjectMember member) {
+        Project project = member.getProject();
+
+        UUID ownerId = project.getMembers().stream()
+                .filter(projectMember -> projectMember.getRole() == ProjectMemberRole.PO)
+                .map(ProjectMember::getUserId)
+                .findFirst()
+                .orElse(member.getUserId());
+
+        int memberCount = (int) project.getMembers().stream()
+                .filter(projectMember -> projectMember.getStatus() == ProjectMemberStatus.ACTIVE)
+                .count();
+
+        return new MyProjectResponseDTO(
+                project.getId(),
+                project.getName(),
+                project.getDescription(),
+                project.getState(),
+                ownerId,
+                project.getCreatedAt(),
+                memberCount,
+                member.getRole()
         );
     }
 

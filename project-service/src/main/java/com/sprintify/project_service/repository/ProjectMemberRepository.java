@@ -14,6 +14,7 @@ public interface ProjectMemberRepository extends JpaRepository<ProjectMember, UU
     boolean existsByProject_IdAndUserIdAndRole(UUID projectId, UUID userId, ProjectMemberRole role);
     boolean existsByProject_IdAndUserId(UUID projectId, UUID userId);
     List<ProjectMember> findAllByUserIdAndStatus(UUID userId, ProjectMemberStatus status);
+    List<ProjectMember> findAllByUserIdAndStatusOrderByJoinedAtDesc(UUID userId, ProjectMemberStatus status);
     List<ProjectMember> findAllByProject_Id(UUID projectId);
     Optional<ProjectMember> findByProject_IdAndUserId(UUID projectId, UUID userId);
 }

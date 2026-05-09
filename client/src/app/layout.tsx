@@ -1,19 +1,16 @@
+import type { Metadata } from 'next'
 import './globals.css'
 import { Toaster } from 'react-hot-toast'
 
-export const metadata = {
-  title: 'Sprintify - Project Management',
-  description: 'Agile Project Management Platform',
+export const metadata: Metadata = {
+  title: 'Sprintify',
+  description: 'Sprintify project management client',
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="bg-background text-on-background">
+      <body>
         {children}
         <Toaster position="top-right" />
       </body>
