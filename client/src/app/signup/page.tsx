@@ -1,128 +1,117 @@
 'use client'
 
+import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { authApi } from '@/lib/api'
+import { authApi, getApiErrorMessage } from '@/lib/api'
 import { useAuthStore } from '@/lib/auth-store'
+import { LoadingScreen } from '@/components/loading-screen'
 
 export default function SignupPage() {
   const router = useRouter()
-  const login = useAuthStore((state) => state.login)
+  const { hydrated, user, setSession } = useAuthStore()
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState({ email: '', password: '', confirmPassword: '' })
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+  useEffect(() => {
+    if (!hydrated) {
+      return
+    }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    if (user) {
+      router.replace(user.role === 'ADMIN' ? '/admin' : '/projects')
+    }
+  }, [hydrated, router, user])
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
 
     if (!formData.email || !formData.password || !formData.confirmPassword) {
-      toast.error('Please fill in all fields')
+      toast.error('Complete all required fields.')
+      return
+    }
+
+    if (formData.password.length < 8) {
+      toast.error('Password must be at least 8 characters long.')
       return
     }
 
     if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match')
-      return
-    }
-
-    if (formData.password.length < 6) {
-      toast.error('Password must be at least 6 characters')
+      toast.error('Passwords do not match.')
       return
     }
 
     setLoading(true)
     try {
-      const response = await authApi.signup(formData.email, formData.password)
-      const { token, email, role } = response.data
-
-      login({ token, email, role })
-      
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('email', email)
-      }
-
-      toast.success('Signup successful!')
-
-      // New users are typically USER role
-      router.push('/user')
-    } catch (error: any) {
-      const message = error.response?.data?.message || 'Signup failed'
-      toast.error(message)
+      const response = await authApi.signup(formData.email.trim(), formData.password)
+      setSession(response)
+      toast.success('Account created successfully.')
+      router.replace(response.role === 'ADMIN' ? '/admin' : '/projects')
+    } catch (error) {
+      toast.error(getApiErrorMessage(error))
     } finally {
       setLoading(false)
     }
   }
 
+  if (!hydrated) {
+    return <LoadingScreen label="Loading signup..." />
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary to-secondary flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-2xl p-8 w-full max-w-md">
-        <h1 className="text-3xl font-bold text-center text-primary mb-2">Sprintify</h1>
-        <p className="text-center text-gray-600 mb-8">Create Your Account</p>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-10">
+      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold text-slate-900">Create account</h1>
+          <p className="mt-2 text-sm text-slate-500">Start using Sprintify with a simple functionality-first workspace.</p>
+        </div>
+        <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Email</label>
             <input
+              className="input"
               type="email"
-              name="email"
               value={formData.email}
-              onChange={handleChange}
-              className="input-field"
-              placeholder="your@email.com"
+              onChange={(event) => setFormData((current) => ({ ...current, email: event.target.value }))}
+              placeholder="you@example.com"
               disabled={loading}
             />
           </div>
-
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Password</label>
             <input
+              className="input"
               type="password"
-              name="password"
               value={formData.password}
-              onChange={handleChange}
-              className="input-field"
-              placeholder="••••••••"
+              onChange={(event) => setFormData((current) => ({ ...current, password: event.target.value }))}
+              placeholder="At least 8 characters"
               disabled={loading}
             />
           </div>
-
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Confirm Password
-            </label>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Confirm password</label>
             <input
+              className="input"
               type="password"
-              name="confirmPassword"
               value={formData.confirmPassword}
-              onChange={handleChange}
-              className="input-field"
-              placeholder="••••••••"
+              onChange={(event) =>
+                setFormData((current) => ({ ...current, confirmPassword: event.target.value }))
+              }
+              placeholder="Repeat your password"
               disabled={loading}
             />
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn-primary w-full flex items-center justify-center gap-2"
-          >
-            {loading ? 'Creating Account...' : 'Sign Up'}
+          <button className="button-primary w-full" type="submit" disabled={loading}>
+            {loading ? 'Creating account...' : 'Create account'}
           </button>
         </form>
-
-        <div className="mt-6 border-t pt-6">
-          <p className="text-center text-gray-600">
-            Already have an account?{' '}
-            <a href="/login" className="text-primary font-semibold hover:underline">
-              Login
-            </a>
-          </p>
-        </div>
+        <p className="mt-6 text-center text-sm text-slate-600">
+          Already have an account?{' '}
+          <Link href="/login" className="font-semibold text-slate-900 underline-offset-4 hover:underline">
+            Sign in
+          </Link>
+        </p>
       </div>
     </div>
   )
