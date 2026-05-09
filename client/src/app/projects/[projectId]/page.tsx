@@ -31,6 +31,26 @@ export default function ProjectDashboardPage() {
   const router = useRouter()
   const projectId = params.projectId
   const { hydrated, user, ready } = useRequiredAuth()
+
+  // Validate projectId
+  if (!projectId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(projectId)) {
+    return (
+      <AppShell>
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold text-red-600 mb-4">Invalid Project ID</h1>
+            <p className="text-gray-600 mb-4">The project ID provided is not valid.</p>
+            <button
+              onClick={() => router.push('/projects')}
+              className="btn btn-primary"
+            >
+              Back to Projects
+            </button>
+          </div>
+        </div>
+      </AppShell>
+    )
+  }
   const [loading, setLoading] = useState(true)
   const [project, setProject] = useState<MyProjectResponse | null>(null)
   const [members, setMembers] = useState<ProjectMemberResponse[]>([])
@@ -77,15 +97,15 @@ export default function ProjectDashboardPage() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [projects, projectMembers, backlogPage, sprintList] = await Promise.all([
-        projectApi.listMyProjects(),
-        projectApi.getProjectMembers(projectId),
-        projectApi.listBacklogItems(projectId),
-        projectApi.listSprints(projectId),
-      ])
+      console.log('Loading project data for:', projectId)
+
+      // Load projects first
+      const projects = await projectApi.listMyProjects()
+      console.log('Projects loaded:', projects.length)
 
       const currentProject = projects.find((entry) => entry.id === projectId)
       if (!currentProject) {
+        console.log('Project not found:', projectId)
         setProject(null)
         setMembers([])
         setBacklog([])
@@ -93,11 +113,30 @@ export default function ProjectDashboardPage() {
         return
       }
 
+      console.log('Current project found:', currentProject.name)
       setProject(currentProject)
+
+      // Load other data in parallel
+      const [projectMembers, backlogPage, sprintList] = await Promise.all([
+        projectApi.getProjectMembers(projectId).catch((error) => {
+          console.error('Error loading members:', error)
+          return []
+        }),
+        projectApi.listBacklogItems(projectId).catch((error) => {
+          console.error('Error loading backlog:', error)
+          return { content: [] }
+        }),
+        projectApi.listSprints(projectId).catch((error) => {
+          console.error('Error loading sprints:', error)
+          return []
+        }),
+      ])
+
       setMembers(projectMembers)
-      setBacklog(backlogPage.content)
+      setBacklog(backlogPage.content || [])
       setSprints(sprintList)
     } catch (error) {
+      console.error('Error in loadData:', error)
       toast.error(getApiErrorMessage(error))
     } finally {
       setLoading(false)

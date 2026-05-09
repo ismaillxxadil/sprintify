@@ -6,14 +6,14 @@ export function StatusPill({ label }: { label: string }) {
   return (
     <span
       className={clsx(
-        'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold',
+        'status-pill',
         normalized === 'ACTIVE' || normalized === 'DONE'
-          ? 'bg-emerald-100 text-emerald-700'
+          ? 'status-active'
           : normalized === 'PENDING' || normalized === 'PLANNING' || normalized === 'IN_PROGRESS'
-            ? 'bg-amber-100 text-amber-700'
+            ? 'status-pending'
             : normalized === 'REJECTED' || normalized === 'CLOSED'
-              ? 'bg-slate-200 text-slate-700'
-              : 'bg-blue-100 text-blue-700'
+              ? 'status-inactive'
+              : 'status-error'
       )}
     >
       {label.replaceAll('_', ' ')}
