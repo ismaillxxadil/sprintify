@@ -1,4 +1,4 @@
-package main.java.com.sprintify.gamification_service.dto;
+package com.sprintify.gamification_service.dto;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;

@@ -1,6 +1,6 @@
-package main.java.com.sprintify.gamification_service.repository;
+package com.sprintify.gamification_service.repository;
 
-import main.java.com.sprintify.gamification_service.Entity.GamificationProfile;
+import com.sprintify.gamification_service.Entity.GamificationProfile;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

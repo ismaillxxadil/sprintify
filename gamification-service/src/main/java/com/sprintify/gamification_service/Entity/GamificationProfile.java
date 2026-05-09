@@ -1,4 +1,4 @@
-package main.java.com.sprintify.gamification_service.Entity;
+package com.sprintify.gamification_service.Entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

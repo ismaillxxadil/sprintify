@@ -1,10 +1,13 @@
-package main.java.com.sprintify.gamification_service.controller;
+package com.sprintify.gamification_service.controller;
 
-import main.java.com.sprintify.gamification_service.dto.AwardXpRequestDTO;
-import main.java.com.sprintify.gamification_service.Entity.GamificationProfile;
-import main.java.com.sprintify.gamification_service.service.GamificationService;
+import com.sprintify.gamification_service.dto.AwardXpRequestDTO;
+import com.sprintify.gamification_service.Entity.GamificationProfile;
+import com.sprintify.gamification_service.service.GamificationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,6 +23,12 @@ public class GamificationController {
 
     private final GamificationService gamificationService;
 
+
+    //get all profiles
+    @GetMapping("/profiles")
+    public ResponseEntity<List<GamificationProfile>> getAllProfiles() {
+        return ResponseEntity.ok(gamificationService.getAllProfiles());
+    }
     @GetMapping("/profile/{userId}")
     public ResponseEntity<GamificationProfile> getProfile(@PathVariable String userId) {
         return ResponseEntity.ok(gamificationService.getProfile(userId));

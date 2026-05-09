@@ -1,13 +1,14 @@
-package main.java.com.sprintify.gamification_service.service;
+package com.sprintify.gamification_service.service;
 
-import main.java.com.sprintify.gamification_service.Entity.GamificationProfile;
-import main.java.com.sprintify.gamification_service.repository.GamificationProfileRepository;
+import com.sprintify.gamification_service.Entity.GamificationProfile;
+import com.sprintify.gamification_service.repository.GamificationProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +26,10 @@ public class GamificationService {
                     GamificationProfile newProfile = new GamificationProfile(userId);
                     return repository.save(newProfile);
                 });
+    }
+
+    public List<GamificationProfile> getAllProfiles() {
+        return repository.findAll();
     }
 
     @Transactional
