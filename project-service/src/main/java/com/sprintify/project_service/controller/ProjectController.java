@@ -21,6 +21,7 @@ import com.sprintify.project_service.dto.CreateProjectRequestDTO;
 import com.sprintify.project_service.dto.InviteRequestDTO;
 import com.sprintify.project_service.dto.InviteResponseDTO;
 import com.sprintify.project_service.dto.InviteDecisionRequestDTO;
+import com.sprintify.project_service.dto.MyProjectResponseDTO;
 import com.sprintify.project_service.dto.ProjectMemberResponseDTO;
 import com.sprintify.project_service.dto.ProjectResponseDTO;
 import com.sprintify.project_service.service.ProjectService;
@@ -42,6 +43,13 @@ public class ProjectController {
 	) {
 		return ResponseEntity.status(HttpStatus.CREATED)
 				.body(projectService.createProject(request, parseUserId(userId)));
+	}
+
+	@GetMapping("/me")
+	public ResponseEntity<List<MyProjectResponseDTO>> getMyProjects(
+			@RequestHeader("X-User-Id") String userId
+	) {
+		return ResponseEntity.ok(projectService.getMyProjects(parseUserId(userId)));
 	}
 
 	@PostMapping("/{projectId}/invites")
